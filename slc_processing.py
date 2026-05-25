@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generic Sentinel-1 SLC processing pipeline using pyroSAR + SNAP GPT.
+"""Generic Sentinel-1 SLC processing pipeline using SNAP GPT.
 
 This script processes two SLC products from an input directory and produces:
 1) GRD-like sigma0 (dB) GeoTIFF for each date
@@ -18,7 +18,6 @@ import os
 import re
 import shutil
 import subprocess
-import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass
@@ -29,11 +28,6 @@ import numpy as np
 import rasterio
 from rasterio.mask import mask
 from shapely.geometry import MultiPoint, box, mapping
-
-try:
-    import pyroSAR  # package name in newer versions
-except ImportError:  # pragma: no cover
-    import pyrosar as pyroSAR  # fallback for older installs
 
 
 @dataclass(frozen=True)
@@ -133,19 +127,16 @@ def find_slc_archives(input_dir: Path) -> List[Path]:
     return products
 
 
-def identify_scenes(products: Iterable[Path]) -> List[object]:
-    scenes = []
-    for p in products:
-        try:
-            scene = pyroSAR.identify(str(p))
-        except Exception:
-            # Fallback: parse acquisition start from Sentinel-1 filename.
-            m = re.search(r"_(\d{8}T\d{6})_", p.name)
-            if not m:
-                raise
-            scene = type("SceneStub", (), {"scene": str(p), "start": m.group(1)})()
-        scenes.append(scene)
-    scenes.sort(key=lambda s: s.start)
+def scene_start_token(path: Path) -> str:
+    m = re.search(r"_(\d{8}T\d{6})_", path.name)
+    if not m:
+        raise ValueError(f"Impossibile estrarre data scena dal filename: {path.name}")
+    return m.group(1)
+
+
+def identify_scenes(products: Iterable[Path]) -> List[Path]:
+    scenes = list(products)
+    scenes.sort(key=lambda p: scene_start_token(p))
     return scenes
 
 
@@ -600,6 +591,7 @@ def build_interferometric_coherence_graph(
     master_first, master_last = overlapping_burst_range_for_bbox(master_zip, subswath, bbox, pol_priority=("vv",))
     slave_first, slave_last = overlapping_burst_range_for_bbox(slave_zip, subswath, bbox, pol_priority=("vv",))
 
+    print(master_first, master_last)
     p = node(g, "Read_Master", "Read")
     xml_value(p, "file", str(master_zip))
 
@@ -611,14 +603,14 @@ def build_interferometric_coherence_graph(
     xml_value(p, "selectedPolarisations", "VV")
     xml_value(p, "firstBurstIndex", str(master_first))
     xml_value(p, "lastBurstIndex", str(master_last))
-    xml_value(p, "wktAoi", bbox.to_wkt())
+    xml_value(p, "wktAoi", "")
 
     p = node(g, "TOPSAR-Split_Slave", "TOPSAR-Split", source_ref="Read_Slave")
     xml_value(p, "subswath", subswath)
     xml_value(p, "selectedPolarisations", "VV")
     xml_value(p, "firstBurstIndex", str(slave_first))
     xml_value(p, "lastBurstIndex", str(slave_last))
-    xml_value(p, "wktAoi", bbox.to_wkt())
+    xml_value(p, "wktAoi", "")
 
     p = node(g, "Apply-Orbit_Master", "Apply-Orbit-File", source_ref="TOPSAR-Split_Master")
     xml_value(p, "orbitType", "Sentinel Precise (Auto Download)")
@@ -701,17 +693,28 @@ def build_interferometric_coherence_graph(
     xml_value(p, "auxFile", "Latest Auxiliary File")
     xml_value(p, "externalAuxFile", "")
 
-    p = node(g, "Write", "Write", source_ref="Terrain-Correction")
+    p = node(g, "Subset", "Subset", source_ref="Terrain-Correction")
+    xml_value(p, "sourceBands", "")
+    xml_value(p, "tiePointGrids", "")
+    xml_value(p, "region", "")
+    xml_value(p, "referenceBand", "")
+    xml_value(p, "geoRegion", bbox.to_wkt())
+    xml_value(p, "subSamplingX", "1")
+    xml_value(p, "subSamplingY", "1")
+    xml_value(p, "fullSwath", "false")
+    xml_value(p, "vectorFile", "")
+    xml_value(p, "polygonRegion", "")
+    xml_value(p, "copyMetadata", "true")
+
+    p = node(g, "Write", "Write", source_ref="Subset")
     xml_value(p, "file", str(out_tif))
     xml_value(p, "formatName", "GeoTIFF")
 
     return g
 
 
-def scene_date_label(scene: object) -> str:
-    # pyrosar metadata exposes start like YYYYMMDDTHHMMSS
-    start = str(scene.start)
-    return start[:8]
+def scene_date_label(scene_zip: Path) -> str:
+    return scene_start_token(scene_zip)[:8]
 
 
 def save_run_metadata(path: Path, payload: dict) -> None:
@@ -826,14 +829,13 @@ def main() -> None:
 
     # Use the most recent two scenes.
     chosen = scenes[-2:]
-    chosen.sort(key=lambda s: s.start)
+    chosen.sort(key=lambda p: scene_start_token(p))
 
     per_date_outputs = []
     per_scene_subswath: dict[str, str] = {}
     subswath_candidates = ["IW1", "IW2", "IW3"]
-    for scene in chosen:
-        src_zip = Path(scene.scene)
-        date_label = scene_date_label(scene)
+    for src_zip in chosen:
+        date_label = scene_date_label(src_zip)
 
         grd_raw = work_dir / f"grd_linear_{date_label}.tif"
         grd_db = work_dir / f"grd_db_{date_label}.tif"
@@ -897,8 +899,8 @@ def main() -> None:
             }
         )
 
-    master = Path(chosen[0].scene)
-    slave = Path(chosen[1].scene)
+    master = chosen[0]
+    slave = chosen[1]
     d1 = scene_date_label(chosen[0])
     d2 = scene_date_label(chosen[1])
 

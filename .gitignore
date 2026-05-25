@@ -37,3 +37,8 @@ Thumbs.db
 # Logs and local runtime files
 *.log
 *.tmp
+
+*.tif
+*.zip
+*.xml
+*.json

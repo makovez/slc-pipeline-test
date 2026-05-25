@@ -16,12 +16,12 @@ from slc_processing import (
 )
 
 master_zip = Path(
-    "frame1_emilia_romagna_2023-05-23_path95_desc/"
-    "S1A_IW_SLC__1SDV_20230323T051942_20230323T052009_047767_05BD0A_F83E.zip"
+    "Emilia/"
+    "S1C_IW_SLC__1SDV_20260407T170527_20260407T170555_007113_00E67E_436C.zip"
 )
 slave_zip = Path(
-    "frame1_emilia_romagna_2023-05-23_path95_desc/"
-    "S1A_IW_SLC__1SDV_20230522T051944_20230522T052011_048642_05D9B6_6ED9.zip"
+    "Emilia/"
+    "S1C_IW_SLC__1SDV_20260501T170528_20260501T170556_007463_00F256_C6B9.zip"
 )
 out_dir = Path("output_coherence_emilia_20230323_20230522")
 work_dir = out_dir / "work"

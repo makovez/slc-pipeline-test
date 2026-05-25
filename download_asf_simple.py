@@ -19,6 +19,9 @@ from pathlib import Path
 from typing import Iterable, List, Optional
 
 import asf_search as asf
+from shapely.geometry import box as geom_box
+from shapely.geometry import shape as geom_shape
+from shapely.wkt import loads as load_wkt
 
 
 def bbox_to_wkt(min_lon: float, min_lat: float, max_lon: float, max_lat: float) -> str:
@@ -64,6 +67,62 @@ def search_slc(
         end=end_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
         maxResults=max_results,
     )
+
+
+def product_contains_bbox(
+    product: asf.ASFProduct,
+    min_lon: float,
+    min_lat: float,
+    max_lon: float,
+    max_lat: float,
+) -> bool:
+    """Return True if ASF product footprint fully covers the bbox."""
+    bbox_geom = geom_box(min_lon, min_lat, max_lon, max_lat)
+
+    geometry = getattr(product, "geometry", None)
+
+    if not geometry:
+        geojson_fn = getattr(product, "geojson", None)
+        if callable(geojson_fn):
+            try:
+                geojson = geojson_fn()
+                if isinstance(geojson, dict):
+                    geometry = geojson.get("geometry")
+            except Exception:
+                geometry = None
+
+    if not geometry:
+        geometry = product.properties.get("geometry")
+
+    if not geometry:
+        return False
+
+    try:
+        if isinstance(geometry, dict):
+            footprint = geom_shape(geometry)
+        elif isinstance(geometry, str):
+            footprint = load_wkt(geometry)
+        else:
+            return False
+    except Exception:
+        return False
+
+    # `covers` includes touching boundaries; `contains` would be stricter.
+    return footprint.covers(bbox_geom)
+
+
+def filter_full_bbox_coverage(
+    products: Iterable[asf.ASFProduct],
+    min_lon: float,
+    min_lat: float,
+    max_lon: float,
+    max_lat: float,
+) -> List[asf.ASFProduct]:
+    return [
+        p
+        for p in products
+        if product_contains_bbox(p, min_lon, min_lat, max_lon, max_lat)
+    ]
 
 
 def unique_products(products: Iterable[asf.ASFProduct]) -> List[asf.ASFProduct]:
@@ -122,6 +181,8 @@ def main() -> None:
     intersects = bbox_to_wkt(min_lon, min_lat, max_lon, max_lat)
     print("Ricerca iniziale SLC su bbox/date...")
     initial_results = search_slc(intersects, range_start, range_end, max_results=200)
+    initial_results = filter_full_bbox_coverage(initial_results, min_lon, min_lat, max_lon, max_lat)
+    print(f"Risultati che coprono interamente il bbox: {len(initial_results)}")
 
     if len(initial_results) == 0:
         print("Nessun prodotto SLC trovato nel range iniziale.")
@@ -155,6 +216,8 @@ def main() -> None:
         f"tra {window_start.isoformat()} e {window_end.isoformat()}"
     )
     month_results = search_slc(intersects, window_start, window_end, max_results=300)
+    month_results = filter_full_bbox_coverage(month_results, min_lon, min_lat, max_lon, max_lat)
+    print(f"Risultati mese precedente con copertura completa bbox: {len(month_results)}")
 
     matched = [
         p
