@@ -16,14 +16,14 @@ from slc_processing import (
 )
 
 master_zip = Path(
-    "Emilia/"
-    "S1C_IW_SLC__1SDV_20260407T170527_20260407T170555_007113_00E67E_436C.zip"
+    "Emilia_2/"
+    "S1C_IW_SLC__1SDV_20260313T051818_20260313T051845_006741_00D9DE_3915.zip"
 )
 slave_zip = Path(
-    "Emilia/"
-    "S1C_IW_SLC__1SDV_20260501T170528_20260501T170556_007463_00F256_C6B9.zip"
+    "Emilia_2/"
+    "S1C_IW_SLC__1SDV_20260406T051818_20260406T051845_007091_00E5C4_79E1.zip"
 )
-out_dir = Path("output_coherence_emilia_20230323_20230522")
+out_dir = Path("output_coherence_emilia_20260313_20260406")
 work_dir = out_dir / "work"
 out_dir.mkdir(parents=True, exist_ok=True)
 work_dir.mkdir(parents=True, exist_ok=True)

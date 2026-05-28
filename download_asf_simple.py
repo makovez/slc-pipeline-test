@@ -7,7 +7,8 @@ Workflow:
 3) Search and download the closest scene about 1 month earlier with matching path/frame.
 
 Authentication:
-- Set environment variables ASF_USERNAME and ASF_PASSWORD (Earthdata credentials).
+- Uses ASF_USERNAME / ASF_PASSWORD if available.
+- Falls back to the provided Earthdata credentials.
 - Ensure ASF EULA is accepted on your account, otherwise downloads return HTTP 401.
 """
 
@@ -170,13 +171,15 @@ def main() -> None:
     )
 
     # Hardcoded initial date range (UTC)
-    range_start = datetime(2026, 4, 28, 0, 0, 0, tzinfo=timezone.utc)
-    range_end = datetime(2026, 5, 3, 23, 59, 59, tzinfo=timezone.utc)
+    range_start = datetime(2026, 3, 28, 0, 0, 0, tzinfo=timezone.utc)
+    range_end = datetime(2026, 4, 6, 23, 59, 59, tzinfo=timezone.utc)
 
-    output_dir = Path("Emilia")
+    output_dir = Path("Emilia_2")
 
     print("Autenticazione ASF...")
-    session = asf.ASFSession().auth_with_token("eyJ0eXAiOiJKV1QiLCJvcmlnaW4iOiJFYXJ0aGRhdGEgTG9naW4iLCJzaWciOiJlZGxqd3RwdWJrZXlfb3BzIiwiYWxnIjoiUlMyNTYifQ.eyJ0eXBlIjoiT0F1dGgiLCJjbGllbnRfaWQiOiJCT19uN25USWxNbGpkdlU2a1JSQjNnIiwiaWF0IjoxNzc5NjM1NjIyLCJpc3MiOiJodHRwczovL3Vycy5lYXJ0aGRhdGEubmFzYS5nb3YiLCJleHAiOjE3Nzk3MjIwMjIsInVpZCI6Im1ha292ZXoiLCJpZGVudGl0eV9wcm92aWRlciI6ImVkbF9vcHMiLCJhc3N1cmFuY2VfbGV2ZWwiOjMsImFjciI6ImVkbCJ9.c-BuZn97igNgbfzUUEonWswNQFr6RTklszUAphoa0G_ZBh9Xdm6DIji24zqL679opkwNgVzoskUAHMc6Ol9aOV7wCFKIlzhXvv6YzHUKbcYplcYNsvAzNxpRqePsDp3cYnbdxfphHl6pHbf_23nDrMmSm_hUylqRv-w1HQ1WmKIxb1NFLNBEm6gxE5djS5jxaikwRgqg6Uk9VriQZ1EftJWZCZpzvddIWyN9Ht7xP8TJyn76LCbP7BlWInLZGbDjUX96r-st3vznYIvsSfzU-KSiSKEvMHClKPzS-9510LfqdKIyfB8mmj8_sP8McxLhELuVoWkaTkS52Wmh0VEvNw")
+    username = os.getenv("ASF_USERNAME", "makovez")
+    password = os.getenv("ASF_PASSWORD", "Akcak4XP4rgL?hG")
+    session = asf.ASFSession().auth_with_creds(username, password)
 
     intersects = bbox_to_wkt(min_lon, min_lat, max_lon, max_lat)
     print("Ricerca iniziale SLC su bbox/date...")

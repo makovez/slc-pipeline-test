@@ -9,9 +9,9 @@ from rasterio.warp import Resampling, reproject
 from scipy import signal
 
 # Hardcoded input paths requested by the user.
-INPUT_C2_DATE_A = Path("otuput_emilia_20230323/work/c2_subset_bbox.tif")
-INPUT_C2_DATE_B = Path("outputs_frame1_20230522_path95_desc/work/c2.tif")
-OUTPUT_DIR = Path("output_change_det_emilia")
+INPUT_C2_DATE_A = Path("c2_20260313/work/c2_subset_bbox.tif")
+INPUT_C2_DATE_B = Path("c2_20260406/work/c2_subset_bbox.tif")
+OUTPUT_DIR = Path("output_cd_polsar_20260313_20260406")
 BOXCAR_WIN = (3, 3)
 
 
