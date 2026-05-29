@@ -1,0 +1,34 @@
+bbox:
+  min_lon: 11.5891752243041992
+  min_lat: 44.3745611959093438
+  max_lon: 12.1745191687090415
+  max_lat: 44.6658172607421875
+
+event_date_range:
+  start: "2026-03-28T00:00:00Z"
+  end: "2026-04-06T23:59:59Z"
+
+asf:
+  # Lascia null per usare le env var.
+  username: makovez
+  password: Akcak4XP4rgL?hG
+  username_env: ASF_USERNAME
+  password_env: ASF_PASSWORD
+
+references:
+  - offset_days: 30
+    search_window_days: 10
+  - offset_days: 40
+    search_window_days: 10
+
+snap:
+  gpt_path: null
+  dem_name: SRTM 1Sec HGT
+  pixel_spacing_m: 13.92
+  subswaths: [IW1, IW2, IW3]
+
+download:
+  output_dir: Emilia_3
+  max_results_event: 200
+  max_results_reference: 300
+  parallel_processes: 3

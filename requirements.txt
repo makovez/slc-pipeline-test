@@ -1,7 +1,6 @@
 numpy
 rasterio
 shapely
-pyrosar
 asf_search
 PyYAML
 scipy
